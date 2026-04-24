@@ -1,3 +1,4 @@
+#include "codegen.h"
 #include "ir.h"
 #include "lexer.h"
 #include "optimizer.h"
@@ -22,7 +23,7 @@ int verify_architecture() {
 }
 
 int main(int argc, char *argv[]) {
-    if (!verify_architecture()) return EXIT_FAILURE;
+    // if (!verify_architecture()) return EXIT_FAILURE;
 
     if (argc ^ 2)
     {
@@ -34,12 +35,24 @@ int main(int argc, char *argv[]) {
     AST         ast;
     parse_block(lexed.data, lexed.count, &ast.nodes, &ast.count);
     IRProg      prog = {0};
-    debug_lexer(&lexed);
-    debug_parser(&ast);
     gen_ir_nodes(&prog, ast.nodes, ast.count);
-    debug_ir(&prog);
     pass_contract(&prog);
     debug_ir(&prog);
+
+    char    *output_path;
+    FILE    *out = create_output(argv[1], &output_path);
+    if (!out) return EXIT_FAILURE;
+
+    write_instructions(out, &prog);
+    fclose(out);
+
+    char    big_mama[65536];
+    sprintf(big_mama, "nasm -f elf64 %s\n", output_path);
+    int res = system(big_mama);
+    output_path[strlen(output_path) - 1] = 'o';
+    sprintf(big_mama, "ld %s\n", output_path);
+    res = system(big_mama);
+    (void)res;
 
     return EXIT_SUCCESS;
 }

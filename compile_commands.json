@@ -118,5 +118,53 @@
     "directory": "/Users/elouannh/code/brainfxcker",
     "file": "/Users/elouannh/code/brainfxcker/src/ir.c",
     "output": "/Users/elouannh/code/brainfxcker/build/ir.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/optimizer.o",
+      "src/optimizer.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/optimizer.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/optimizer.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/codegen.o",
+      "src/codegen.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/codegen.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/codegen.o"
   }
 ]

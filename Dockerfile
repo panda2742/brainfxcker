@@ -18,6 +18,10 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     libcurl4 \
     valgrind \
+    nasm \
+    gcc \
+    binutils \
+    bash \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -27,6 +31,8 @@ COPY --from=builder /app/brainfxcker .
 ENV VGFLAGS=--leak-check=full --show-leak-kinds=all --track-origins=yes --show-mismatched-frees=yes --track-fds=yes --trace-children=yes
 
 RUN useradd -m appuser
+RUN chown appuser -R .
+
 USER appuser
 
 CMD ["./brainfxcker", "programs/main.bf"]
