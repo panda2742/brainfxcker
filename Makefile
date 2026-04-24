@@ -10,8 +10,8 @@ SOURCE_DIR		:=	./src/
 # 2. SOURCE CODE                                                               #
 # **************************************************************************** #
 
-override HEADER_FILES		:=	brainfxcker lexer parser debug ir optimizer codegen
-override SOURCE_FILES		:=	main lexer parser debug ir optimizer codegen
+override HEADER_FILES		:=	brainfxcker lexer parser debug ir optimizer codegen output
+override SOURCE_FILES		:=	main lexer parser debug ir optimizer codegen output
 
 # **************************************************************************** #
 # 3. OTHER COMPILATION VARIABLES                                               #

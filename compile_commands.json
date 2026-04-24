@@ -166,5 +166,29 @@
     "directory": "/Users/elouannh/code/brainfxcker",
     "file": "/Users/elouannh/code/brainfxcker/src/codegen.c",
     "output": "/Users/elouannh/code/brainfxcker/build/codegen.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/output.o",
+      "src/output.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/output.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/output.o"
   }
 ]

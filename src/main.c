@@ -2,6 +2,7 @@
 #include "ir.h"
 #include "lexer.h"
 #include "optimizer.h"
+#include "output.h"
 #include "parser.h"
 #include "debug.h"
 #include <stdio.h>
@@ -23,7 +24,7 @@ int verify_architecture() {
 }
 
 int main(int argc, char *argv[]) {
-    // if (!verify_architecture()) return EXIT_FAILURE;
+    if (!verify_architecture()) return EXIT_FAILURE;
 
     if (argc ^ 2)
     {
@@ -37,20 +38,17 @@ int main(int argc, char *argv[]) {
     IRProg      prog = {0};
     gen_ir_nodes(&prog, ast.nodes, ast.count);
     pass_contract(&prog);
-    debug_ir(&prog);
 
-    char    *output_path;
-    FILE    *out = create_output(argv[1], &output_path);
-    if (!out) return EXIT_FAILURE;
+    Output  out = get_output(argv[1]);
+    if (!out.asm_out) return EXIT_FAILURE;
 
-    write_instructions(out, &prog);
-    fclose(out);
+    write_instructions(out.asm_out, &prog);
+    fclose(out.asm_out);
 
     char    big_mama[65536];
-    sprintf(big_mama, "nasm -f elf64 %s\n", output_path);
+    sprintf(big_mama, "nasm -f elf64 %s\n", out.asm_out_path);
     int res = system(big_mama);
-    output_path[strlen(output_path) - 1] = 'o';
-    sprintf(big_mama, "ld %s\n", output_path);
+    sprintf(big_mama, "ld %s.o\n", out.base);
     res = system(big_mama);
     (void)res;
 
