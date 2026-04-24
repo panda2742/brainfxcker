@@ -1,5 +1,6 @@
 #include "ir.h"
 #include "lexer.h"
+#include "optimizer.h"
 #include "parser.h"
 #include "debug.h"
 #include <stdio.h>
@@ -33,9 +34,11 @@ int main(int argc, char *argv[]) {
     AST         ast;
     parse_block(lexed.data, lexed.count, &ast.nodes, &ast.count);
     IRProg      prog = {0};
-    gen_ir_nodes(&prog, ast.nodes, ast.count);
     debug_lexer(&lexed);
     debug_parser(&ast);
+    gen_ir_nodes(&prog, ast.nodes, ast.count);
+    debug_ir(&prog);
+    pass_contract(&prog);
     debug_ir(&prog);
 
     return EXIT_SUCCESS;

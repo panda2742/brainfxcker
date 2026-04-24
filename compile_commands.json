@@ -22,5 +22,101 @@
     "directory": "/Users/elouannh/code/brainfxcker",
     "file": "/Users/elouannh/code/brainfxcker/src/main.c",
     "output": "/Users/elouannh/code/brainfxcker/build/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/lexer.o",
+      "src/lexer.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/lexer.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/lexer.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/parser.o",
+      "src/parser.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/parser.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/parser.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/debug.o",
+      "src/debug.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/debug.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/debug.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "--std=c99",
+      "-g3",
+      "-O3",
+      "-flto",
+      "-mtune=native",
+      "-funroll-loops",
+      "-ffast-math",
+      "-falign-functions=32",
+      "-I./inc/",
+      "-c",
+      "-o",
+      "build/ir.o",
+      "src/ir.c"
+    ],
+    "directory": "/Users/elouannh/code/brainfxcker",
+    "file": "/Users/elouannh/code/brainfxcker/src/ir.c",
+    "output": "/Users/elouannh/code/brainfxcker/build/ir.o"
   }
 ]

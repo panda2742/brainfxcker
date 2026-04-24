@@ -12,6 +12,7 @@ typedef enum {
     IR_LOOP_BEG, // if (*ptr == 0) goto LOOP_END[target]
     IR_LOOP_END, // if (*ptr != 0) goto LOOP_BEG[target]
     IR_MUL_COPY, // ptr[offset] += *ptr * factor  (optimisation)
+    IR_NOP,      // (optimisation uniquement)
 }   IROp;
 
 typedef struct {
@@ -25,4 +26,5 @@ typedef struct {
     size_t  count, capacity;
 }   IRProg;
 
+void emit(IRProg *prog, IRInstr instr);
 void gen_ir_nodes(IRProg *prog, Node *nodes, size_t n);
