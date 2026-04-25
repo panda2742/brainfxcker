@@ -1,7 +1,8 @@
 #pragma once
-#include "ir.h"
-#include "lexer.h"
-#include "parser.h"
+
+#include "translation/ir.h"
+#include "init/lexer.h"
+#include "init/parser.h"
 
 void debug_lexer(TokenList *tokens);
 void debug_parser(AST *ast);
