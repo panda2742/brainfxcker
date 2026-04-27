@@ -23,3 +23,4 @@ typedef struct {
 }	Output;
 
 Output	create_output(const char *path);
+void	free_output(Output *out);

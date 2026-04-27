@@ -40,6 +40,7 @@ static void pass_clean_loop_(PagedVector *prog)
 void	pass_contract(PagedVector *prog)
 {
 	PagedVector	*out = pv_create(prog->sib);
+
 	for (size_t i = 0; i < prog->count; )
 	{
 		IRInstr *cur = ((IRInstr *)(pv_get(prog, i)));
@@ -63,9 +64,9 @@ void	pass_contract(PagedVector *prog)
 			++i;
 		}
 	}
-	pass_clean_loop_(prog);
+	pass_clean_loop_(out);
 	prog->count = out->count;
-	prog->page_count = out->count;
+	prog->page_count = out->page_count;
 	prog->pages = out->pages;
 	prog->sib = out->sib;
 }

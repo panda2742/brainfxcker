@@ -16,7 +16,7 @@
 #define OUTPUT_OBJECT_EXT "o"
 #define OUTPUT_OBJECT_EXT_LEN 1
 
-static const char	*prepare_base_path_(const char *path)
+static char	*prepare_base_path_(const char *path)
 {
 	char	resolved[4096];
 	if (!realpath(path, resolved)) return NULL;
@@ -24,7 +24,7 @@ static const char	*prepare_base_path_(const char *path)
 	char *dot = strrchr(resolved, '.');
 	if (!dot) return NULL;
 	dot[1] = 0;
-	const char	*base_path = strdup(resolved);
+	char	*base_path = strdup(resolved);
 	return base_path;
 }
 
@@ -68,11 +68,24 @@ static OutputData	generate_out_data_(OutputDataType type, const char *base_path)
 
 Output	create_output(const char *path)
 {
-	const char	*base_path = prepare_base_path_(path);
+	char	*base_path = prepare_base_path_(path);
 	if (!base_path) { /* to do */ }
 
 	Output	res;
 	res.asm = generate_out_data_(OUTPUT_ASM, base_path);
 	res.object = generate_out_data_(OUTPUT_OBJECT, base_path);
+	free(base_path);
 	return res;
+}
+
+void	free_output(Output *out)
+{
+	if (out->asm.path)
+		free(out->asm.path);
+	if (out->asm.cmd)
+		free(out->asm.cmd);
+	if (out->object.path)
+		free(out->object.path);
+	if (out->object.cmd)
+		free(out->object.cmd);
 }

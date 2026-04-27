@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lexer.h"
+#include "utils/paged_vector.h"
 #include <stddef.h>
 
 typedef enum {
@@ -25,4 +25,5 @@ typedef struct {
 	size_t	count;
 } AST;
 
-size_t	 parse_block(Token *tokens, size_t len, Node **out, size_t *out_count);
+void	free_nodes(Node *nodes, size_t count);
+size_t	 parse_block(PagedVector *tokens, size_t start, size_t len, Node **out, size_t *out_count);

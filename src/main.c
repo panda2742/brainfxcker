@@ -4,6 +4,7 @@
 #include "translation/optimizer.h"
 #include "translation/output.h"
 #include "init/parser.h"
+#include "utils/paged_vector.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +34,7 @@ int	main(int argc, char *argv[]) {
 
 	PagedVector	*lexed = lex_file(argv[1]);
 	AST			ast;
-	parse_block((Token *)lexed->pages[0], lexed->count, &ast.nodes, &ast.count);
+	parse_block(lexed, 0, lexed->count, &ast.nodes, &ast.count);
 	PagedVector	*prog = pv_create(sizeof(IRInstr));
 	gen_ir_nodes(prog, ast.nodes, ast.count);
 	pass_contract(prog);
@@ -43,7 +44,12 @@ int	main(int argc, char *argv[]) {
 	fclose(out.asm.file);
 	int	_ = system(out.asm.cmd);
 	_ = system(out.object.cmd);
+	remove(out.asm.path);
 	remove(out.object.path);
+	pv_free(lexed);
+	pv_free(prog);
+	free_output(&out);
+	free_nodes(ast.nodes, ast.count);
 	(void)_;
 	return EXIT_SUCCESS;
 }

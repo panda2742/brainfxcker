@@ -36,11 +36,11 @@ override DIRS		:=	$(sort $(dir $(OBJ) $(DEPS)))
 
 TURBO_FLAGS			:=	-O3 -flto -mtune=native -funroll-loops -ffast-math -falign-functions=32
 DEBUG_FLAGS			:=	-g3
-CFLAGS				:=	-Wall -Wextra -Werror --std=c99 -D_POSIX_C_SOURCE=200809L -MD $(TURBO_FLAGS)
+CFLAGS				:=	-Wall -Wextra -Werror --std=c99 -D_POSIX_C_SOURCE=200809L -MD $(DEBUG_FLAGS) $(TURBO_FLAGS)
 MAKEFLAGS			:=	--no-print-directory
 RMFLAGS				:=	-rf
 VG					:=	valgrind
-VGFLAGS				:=	--leak-check=full --show-leak-kinds=all --track-origins=yes --show-mismatched-frees=yes --track-fds=yes --trace-children=yes
+VGFLAGS				:=	--leak-check=full --show-leak-kinds=all --track-origins=yes --show-mismatched-frees=yes --track-fds=yes # --trace-children=yes
 override CC			:=	gcc
 override RM			:=	rm
 override CLEAR		:=	clear
@@ -87,7 +87,7 @@ run: all
 .PHONY: vg
 vg: all
 	$(VG) $(VGFLAGS) ./$(NAME) programs/main.bf
-	./a.out
+	$(VG) $(VGFLAGS) ./a.out
 
 .PHONY: cg
 cg: all

@@ -41,3 +41,11 @@ void	*pv_push(PagedVector *vec, void *element)
 	++vec->count;
 	return slot;
 }
+
+void	pv_free(PagedVector *vec)
+{
+	for (size_t i = 0; i < vec->page_count; ++i)
+		free(vec->pages[i]);
+	free(vec->pages);
+	free(vec);
+}

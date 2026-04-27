@@ -1,0 +1,686 @@
+=== src/init ===
+
+=== src/main.c ===
+#include "translation/codegen.h"
+#include "translation/ir.h"
+#include "init/lexer.h"
+#include "translation/optimizer.h"
+#include "translation/output.h"
+#include "init/parser.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+int verify_architecture() {
+#if defined(__x86_64__) || defined(_M_X64)
+	// printf("Compiled for x86-64 architecture\n");
+	return 1;
+#elif defined(__i386__) || defined(_M_IX86)
+	printf("Compiled for x86 (32-bit) - NOT EXPECTED\n");
+	return 0;
+#else
+	printf("? Unknown architecture\n");
+	return 0;
+#endif
+}
+
+int	main(int argc, char *argv[]) {
+	if (!verify_architecture()) return EXIT_FAILURE;
+
+	if (argc ^ 2)
+	{
+		fprintf(stderr, "Usage: ./brainfxcker <program.bf>\n");
+		exit(EXIT_FAILURE);
+	}
+
+	PagedVector	*lexed = lex_file(argv[1]);
+	AST			ast;
+	parse_block(lexed, lexed->count, &ast.nodes, &ast.count);
+	PagedVector	*prog = pv_create(sizeof(IRInstr));
+	gen_ir_nodes(prog, ast.nodes, ast.count);
+	// pass_contract(prog);
+
+	Output	out = create_output(argv[1]);
+	write_instructions(out.asm.file, prog);
+	int	_ = system(out.asm.cmd);
+	fclose(out.asm.file);
+	_ = system(out.object.cmd);
+	// remove(out.asm.path);
+	// remove(out.object.path);
+	(void)_;
+	return EXIT_SUCCESS;
+}
+
+=== src/translation ===
+
+=== src/utils ===
+
+=== src/init/args.c ===
+#include "init/args.h"
+
+=== src/init/errors.c ===
+#include "init/errors.h"
+
+
+=== src/init/lexer.c ===
+#include "init/lexer.h"
+#include "utils/paged_vector.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+PagedVector	*lex_file(const char *path)
+{
+	FILE	*f = fopen(path, "r");
+	if (!f)
+	{
+		perror(path);
+		exit(EXIT_FAILURE);
+	}
+
+	PagedVector	*tl = pv_create(sizeof(Token));
+	size_t		line = 1, col = 0;
+	int			c;
+
+	while ((c = fgetc(f)) != EOF)
+	{
+		++col;
+		if (c == '\n')
+		{
+			++line;
+			col = 0;
+			continue;
+		}
+
+		TokenKind	kind;
+		switch (c)
+		{
+			case '>': kind = TOK_INC_PTR;	break;
+			case '<': kind = TOK_DEC_PTR;	break;
+			case '+': kind = TOK_INC_VAL;	break;
+			case '-': kind = TOK_DEC_VAL;	break;
+			case '.': kind = TOK_OUTPUT;	break;
+			case ',': kind = TOK_INPUT;		break;
+			case '[': kind = TOK_LOOP_OPEN; break;
+			case ']': kind = TOK_LOOP_CLOSE;break;
+			default: continue;
+		}
+		pv_push(tl, &(Token){kind, line, col});
+	}
+	fclose(f);
+	return tl;
+}
+
+=== src/init/parser.c ===
+#include "init/parser.h"
+#include "init/lexer.h"
+#include "utils/paged_vector.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+size_t	 parse_block(PagedVector *tokens, size_t len, Node **out, size_t *out_count)
+{
+	Node	*buf = NULL;
+	size_t	buf_cap = 0, buf_len = 0;
+	size_t	i = 0;
+
+	while (i < len)
+	{
+		Token	*tok = pv_get(tokens, i);
+
+		if (tok->kind == TOK_LOOP_CLOSE) break;
+		if (buf_len >= buf_cap)
+		{
+			buf_cap = buf_cap ? buf_cap * 2 : 32;
+			buf = realloc(buf, buf_cap * sizeof(Node));
+		}
+
+		Node	node = {.kind = (NodeKind)tok->kind, .line = tok->line, .col = tok->col};
+
+		if (tok->kind == TOK_LOOP_OPEN)
+		{
+			size_t	consumed = parse_block(tokens + i + 1, len - i - 1, &node.children, &node.child_count);
+			if (((Token *)(pv_get(tokens, i + 1 + consumed)))->kind != TOK_LOOP_CLOSE)
+			{
+				fprintf(stderr, "error: unmatched '[' at %zu:%zu\n", tok->line, tok->col);
+				exit(1);
+			}
+			i += consumed + 2;
+		}
+		else ++i;
+		buf[buf_len++] = node;
+	}
+
+	*out = buf;
+	*out_count = buf_len;
+	return i;
+}
+
+=== src/translation/codegen.c ===
+#include "translation/codegen.h"
+#include "translation/ir.h"
+#include "utils/paged_vector.h"
+#include <stdio.h>
+#include <string.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+static size_t	loop_stack[1024];
+static size_t	loop_stack_top = 0;
+static size_t	loop_counter = 0;
+
+static int	write_header_(FILE *out)
+{
+	return fprintf(out,
+		"bits 64\n"
+		"section .bss\n"
+		"  tape resb 30000\n\n"
+		"section .text\n"
+		"global _start\n"
+		"_start:\n"
+		"  lea rbx, [rel tape]\n"
+	);
+}
+
+static int	write_footer_(FILE *out)
+{
+	return fprintf(out,
+		"  mov rax, 60\n"
+		"  xor rdi, rdi\n"
+		"  syscall\n"
+	);
+}
+
+int write_instructions(FILE *out, PagedVector *prog)
+{
+	int res = 0, tmp = 0;
+
+	if ((tmp = write_header_(out)) <= 0)
+	{
+		perror("write_header");
+		exit(EXIT_FAILURE);
+	}
+	res += tmp;
+
+	for (size_t i = 0; i < prog->count; ++i)
+	{
+		IRInstr *instr = pv_get(prog, i);
+		switch (instr->op)
+		{
+			case IR_ADD:
+				tmp = fprintf(out, "  add byte [rbx], %d\n", instr->arg);
+			break;
+			case IR_MOVE:
+				tmp = fprintf(out, "  add rbx, %d\n", instr->arg);
+			break;
+			case IR_SET:
+				tmp = fprintf(out, "  mov byte [rbx], %d\n", instr->arg);
+			break;
+			case IR_OUTPUT:
+				tmp = fprintf(out,
+					"  mov rax, 1\n"
+					"  mov rdi, 1\n"
+					"  mov rsi, rbx\n"
+					"  mov rdx, 1\n"
+					"  syscall\n"
+				);
+				break;
+			case IR_INPUT:
+				tmp = fprintf(out,
+					"  mov rax, 0\n"
+					"  mov rdi, 0\n"
+					"  mov rsi, rbx\n"
+					"  mov rdx, 1\n"
+					"  syscall\n"
+				);
+			break;
+			case IR_LOOP_BEG:
+			{
+				size_t id = loop_counter++;
+				loop_stack[loop_stack_top++] = id;
+				tmp = fprintf(out,
+					".L%zu_beg:\n"
+					"  cmp byte [rbx], 0\n"
+					"  je .L%zu_end\n",
+					id, id
+				);
+				break;
+			}
+			case IR_LOOP_END:
+			{
+				size_t id = loop_stack[--loop_stack_top];
+				tmp = fprintf(out,
+					"  cmp byte [rbx], 0\n"
+					"  jne .L%zu_beg\n"
+					".L%zu_end:\n",
+					id, id
+				);
+				break;
+			}
+			default: break;
+		}
+		if (tmp <= 0)
+		{
+			perror("write_instr");
+			exit(EXIT_FAILURE);
+		}
+		res += tmp;
+	}
+
+	if ((tmp = write_footer_(out)) <= 0)
+	{
+		perror("write_header");
+		exit(EXIT_FAILURE);
+	}
+	res += tmp;
+	return res;
+}
+
+=== src/translation/ir.c ===
+#include "translation/ir.h"
+#include "init/parser.h"
+#include "utils/paged_vector.h"
+#include <stddef.h>
+#include <stdlib.h>
+
+void gen_ir_nodes(PagedVector *prog, Node *nodes, size_t n)
+{
+	for (size_t i = 0; i < n; ++i)
+	{
+		switch (nodes[i].kind)
+		{
+			case NODE_INC_PTR: pv_push(prog, &(IRInstr){IR_MOVE, +1, 0}); break;
+			case NODE_DEC_PTR: pv_push(prog, &(IRInstr){IR_MOVE, -1, 0}); break;
+			case NODE_INC_VAL: pv_push(prog, &(IRInstr){IR_ADD,	 +1, 0}); break;
+			case NODE_DEC_VAL: pv_push(prog, &(IRInstr){IR_ADD,	 -1, 0}); break;
+			case NODE_OUTPUT:  pv_push(prog, &(IRInstr){IR_OUTPUT, 0, 0});	break;
+			case NODE_INPUT:   pv_push(prog, &(IRInstr){IR_INPUT, 0, 0});	break;
+			case NODE_LOOP:
+			{
+				size_t	open_idx = prog->count;
+				pv_push(prog, &(IRInstr){IR_LOOP_BEG, 0, 0});
+				gen_ir_nodes(prog, nodes[i].children, nodes[i].child_count);
+				size_t	close_idx = prog->count;
+				pv_push(prog, &(IRInstr){IR_LOOP_END, (int)open_idx, 0});
+				((IRInstr *)(pv_get(prog, open_idx)))->arg = (int)close_idx;
+				break;
+			}
+		}
+	}
+}
+
+=== src/translation/optimizer.c ===
+#include "translation/optimizer.h"
+#include "translation/ir.h"
+#include "utils/paged_vector.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+static void pass_remove_nop_(PagedVector *prog)
+{
+	for (size_t i = 0; i < prog->count; ++i)
+	{
+		if (((IRInstr *)(pv_get(prog, i)))->op != IR_NOP) continue;
+		memmove(((IRInstr *)(pv_get(prog, i))), ((IRInstr *)(pv_get(prog, i + 1))), prog->count - i);
+		memmove(
+			pv_get(prog, i),
+			pv_get(prog, i + 1),
+			(prog->count - i - 1) * prog->sib
+		);
+		--prog->count;
+	}
+}
+
+static void pass_clean_loop_(PagedVector *prog)
+{
+	for (size_t i = 0; i + 2 < prog->count; ++i)
+	{
+		IRInstr *a = ((IRInstr *)(pv_get(prog, i)));
+		IRInstr *b = ((IRInstr *)(pv_get(prog, i + 1)));
+		IRInstr *c = ((IRInstr *)(pv_get(prog, i + 2)));
+
+		if (a->op == IR_LOOP_BEG && b->op == IR_ADD && (b->arg == 1 || b->arg == -1) && c->op == IR_LOOP_END)
+		{
+			a->op = 0;
+			b->op = c->op = IR_NOP;
+		}
+	}
+	pass_remove_nop_(prog);
+}
+
+void	pass_contract(PagedVector *prog)
+{
+	PagedVector	*out = pv_create(prog->sib);
+	for (size_t i = 0; i < prog->count; )
+	{
+		IRInstr *cur = ((IRInstr *)(pv_get(prog, i)));
+
+		if (cur->op == IR_ADD || cur->op == IR_MOVE)
+		{
+			int sum = cur->arg;
+			size_t	j = i + 1;
+			while (j < prog->count && ((IRInstr *)(pv_get(prog, j)))->op == cur->op)
+			{
+				sum += ((IRInstr *)(pv_get(prog, j)))->arg;
+				++j;
+			}
+			if (sum != 0)
+				pv_push(out, &(IRInstr){cur->op, sum, 0});
+			i = j;
+		}
+		else
+		{
+			pv_push(out, cur);
+			++i;
+		}
+	}
+	pass_clean_loop_(out);
+	prog->count = out->count;
+	prog->page_count = out->page_count;
+	prog->pages = out->pages;
+	prog->sib = out->sib;
+}
+
+=== src/translation/output.c ===
+#define _POSIX_C_SOURCE 200809L
+#include "translation/output.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define OUTPUT_ASM_CMD "nasm -f elf64 "
+#define OUTPUT_ASM_CMD_LEN 14
+#define OUTPUT_ASM_EXT "s"
+#define OUTPUT_ASM_EXT_LEN 1
+
+#define OUTPUT_OBJECT_CMD "ld "
+#define OUTPUT_OBJECT_CMD_LEN 3
+#define OUTPUT_OBJECT_EXT "o"
+#define OUTPUT_OBJECT_EXT_LEN 1
+
+static const char	*prepare_base_path_(const char *path)
+{
+	char	resolved[4096];
+	if (!realpath(path, resolved)) return NULL;
+
+	char *dot = strrchr(resolved, '.');
+	if (!dot) return NULL;
+	dot[1] = 0;
+	const char	*base_path = strdup(resolved);
+	return base_path;
+}
+
+static OutputData	generate_out_data_(OutputDataType type, const char *base_path)
+{
+	const size_t	base_len = strlen(base_path);
+	OutputData		data = {.type = type};
+	char			*cmd = NULL, *ext = NULL;
+	size_t			cmd_len = 0, ext_len = 0;
+
+	switch (type)
+	{
+		case OUTPUT_ASM:
+		cmd = OUTPUT_ASM_CMD;
+		cmd_len = OUTPUT_ASM_CMD_LEN;
+		ext = OUTPUT_ASM_EXT;
+		ext_len = OUTPUT_ASM_EXT_LEN;
+		break;
+		case OUTPUT_OBJECT:
+		cmd = OUTPUT_OBJECT_CMD;
+		cmd_len = OUTPUT_OBJECT_CMD_LEN;
+		ext = OUTPUT_OBJECT_EXT;
+		ext_len = OUTPUT_OBJECT_EXT_LEN;
+		break;
+	}
+	data.path_len = base_len + ext_len;
+	data.path = malloc(data.path_len + 1);
+	memcpy(data.path, base_path, base_len);
+	memcpy(&data.path[base_len], ext, ext_len);
+	data.path[data.path_len] = 0;
+
+	data.cmd_len = cmd_len + data.path_len;
+	data.cmd = malloc(data.cmd_len + 1);
+	memcpy(data.cmd, cmd, cmd_len);
+	memcpy(&data.cmd[cmd_len], data.path, data.path_len);
+	data.cmd[data.cmd_len] = 0;
+	if (data.type == OUTPUT_ASM)
+		data.file = fopen(data.path, "w");
+	return data;
+}
+
+Output	create_output(const char *path)
+{
+	const char	*base_path = prepare_base_path_(path);
+	if (!base_path) { /* to do */ }
+
+	Output	res;
+	res.asm = generate_out_data_(OUTPUT_ASM, base_path);
+	res.object = generate_out_data_(OUTPUT_OBJECT, base_path);
+	return res;
+}
+
+=== src/utils/paged_vector.c ===
+#include "utils/paged_vector.h"
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+PagedVector	*pv_create(size_t sib)
+{
+	PagedVector	*res = malloc(sizeof(PagedVector));
+	if (!res) return NULL;
+
+	res->pages = NULL;
+	res->page_count = 0;
+	res->count = 0;
+	res->sib = sib;
+	return res;
+}
+
+void	*pv_get(PagedVector *vec, size_t i)
+{
+	size_t	page = i >> PAGE_BITS;
+	size_t	offset = i & PAGE_MASK;
+	return (char *)vec->pages[page] + offset * vec->sib;
+}
+
+void	*pv_push(PagedVector *vec, void *element)
+{
+	if ((vec->count & PAGE_MASK) == 0)
+	{
+		void	**new_pages = realloc(vec->pages, (vec->page_count + 1) * sizeof(void *));
+		if (!new_pages) return NULL;
+		vec->pages = new_pages;
+
+		vec->pages[vec->page_count] = malloc(PAGE_SIZE * vec->sib);
+		if (!vec->pages[vec->page_count]) return NULL;
+		++vec->page_count;
+	}
+
+	void	*slot = pv_get(vec, vec->count);
+	memcpy(slot, element, vec->sib);
+	++vec->count;
+	return slot;
+}
+
+=== inc/brainfxcker.h ===
+#pragma once
+
+#include "init/args.h"
+typedef struct {
+	char	*binary_path;
+	Arg		*args;
+}	Brainfxcker;
+
+=== inc/init ===
+
+=== inc/translation ===
+
+=== inc/utils ===
+
+=== inc/init/args.h ===
+#pragma once
+
+typedef struct {
+	char	*key;
+	char	*value;
+}	Arg;
+
+=== inc/init/errors.h ===
+#pragma once
+
+
+=== inc/init/lexer.h ===
+#pragma once
+
+#include "utils/paged_vector.h"
+#include <stddef.h>
+
+typedef enum {
+	TOK_INC_PTR,   // >
+	TOK_DEC_PTR,   // <
+	TOK_INC_VAL,   // +
+	TOK_DEC_VAL,   // -
+	TOK_OUTPUT,	   // .
+	TOK_INPUT,	   // ,
+	TOK_LOOP_OPEN, // [
+	TOK_LOOP_CLOSE // ]
+} TokenKind;
+
+typedef struct {
+	TokenKind	kind;
+	size_t		line;
+	size_t		col;
+}	Token;
+
+PagedVector	*lex_file(const char *path);
+void		free_token_list(PagedVector *tl);
+
+=== inc/init/parser.h ===
+#pragma once
+
+#include "lexer.h"
+#include <stddef.h>
+
+typedef enum {
+	NODE_INC_PTR,
+	NODE_DEC_PTR,
+	NODE_INC_VAL,
+	NODE_DEC_VAL,
+	NODE_OUTPUT,
+	NODE_INPUT,
+	NODE_LOOP
+} NodeKind;
+
+typedef struct Node {
+	NodeKind	 kind;
+	struct Node *children;
+	size_t		 child_count;
+	size_t		 line, col;
+} Node;
+
+typedef struct {
+	Node	*nodes;
+	size_t	count;
+} AST;
+
+size_t	 parse_block(PagedVector *tokens, size_t len, Node **out, size_t *out_count);
+
+=== inc/translation/codegen.h ===
+#pragma once
+
+#include "utils/paged_vector.h"
+#include <stddef.h>
+#include <stdio.h>
+
+extern size_t	loop_id;
+
+int		write_instructions(FILE *out, PagedVector *prog);
+
+=== inc/translation/ir.h ===
+#pragma once
+
+#include "init/parser.h"
+#include <stddef.h>
+
+typedef enum {
+	IR_ADD,		 // *ptr += arg	 (peut être négatif)
+	IR_MOVE,	 // ptr += arg	 (peut être négatif)
+	IR_SET,		 // *ptr = arg	 (généré après optimisation)
+	IR_OUTPUT,	 // write(1, ptr, 1)
+	IR_INPUT,	 // read(0, ptr, 1)
+	IR_LOOP_BEG, // if (*ptr == 0) goto LOOP_END[target]
+	IR_LOOP_END, // if (*ptr != 0) goto LOOP_BEG[target]
+	IR_MUL_COPY, // ptr[offset] += *ptr * factor  (optimisation)
+	IR_NOP,		 // (optimisation uniquement)
+}	IROp;
+
+typedef struct {
+	IROp	op;
+	int		arg;	 // valeur / delta / target selon l'opcode
+	int		offset;	 // pour IR_MUL_COPY
+}	IRInstr;
+
+void gen_ir_nodes(PagedVector *prog, Node *nodes, size_t n);
+
+=== inc/translation/optimizer.h ===
+#pragma once
+
+#include "utils/paged_vector.h"
+
+void	pass_contract(PagedVector *prog);
+
+=== inc/translation/output.h ===
+#pragma once
+
+#include <stdio.h>
+#include <stddef.h>
+
+typedef enum {
+	OUTPUT_ASM,
+	OUTPUT_OBJECT,
+}	OutputDataType;
+
+typedef struct {
+	OutputDataType	type;
+	char			*path;
+	size_t			path_len;
+	char			*cmd;
+	size_t			cmd_len;
+	FILE			*file;
+}	OutputData;
+
+typedef struct {
+	OutputData	asm;
+	OutputData	object;
+}	Output;
+
+Output	create_output(const char *path);
+
+=== inc/utils/paged_vector.h ===
+#pragma once
+
+#include <stddef.h>
+
+#define PAGE_BITS 6
+#define PAGE_SIZE (1 << PAGE_BITS)
+#define PAGE_MASK (PAGE_SIZE - 1)
+
+typedef struct {
+	void	**pages;
+	size_t	page_count;
+	size_t	count;
+	size_t	sib;
+}	PagedVector;
+
+PagedVector	*pv_create(size_t sib);
+void		*pv_get(PagedVector *vec, size_t i);
+void		*pv_push(PagedVector *vec, void *element);
+

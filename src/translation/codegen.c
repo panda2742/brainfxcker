@@ -37,11 +37,12 @@ int write_instructions(FILE *out, PagedVector *prog)
 {
 	int res = 0, tmp = 0;
 
-	if ((tmp += write_header_(out)) <= res)
+	if ((tmp = write_header_(out)) <= 0)
 	{
 		perror("write_header");
 		exit(EXIT_FAILURE);
 	}
+	res += tmp;
 
 	for (size_t i = 0; i < prog->count; ++i)
 	{
@@ -65,7 +66,7 @@ int write_instructions(FILE *out, PagedVector *prog)
 					"  mov rdx, 1\n"
 					"  syscall\n"
 				);
-			break;
+				break;
 			case IR_INPUT:
 				tmp = fprintf(out,
 					"  mov rax, 0\n"
@@ -74,7 +75,8 @@ int write_instructions(FILE *out, PagedVector *prog)
 					"  mov rdx, 1\n"
 					"  syscall\n"
 				);
-			break;case IR_LOOP_BEG:
+			break;
+			case IR_LOOP_BEG:
 			{
 				size_t id = loop_counter++;
 				loop_stack[loop_stack_top++] = id;
@@ -99,17 +101,19 @@ int write_instructions(FILE *out, PagedVector *prog)
 			}
 			default: break;
 		}
-		if (tmp <= res)
+		if (tmp <= 0)
 		{
 			perror("write_instr");
 			exit(EXIT_FAILURE);
 		}
+		res += tmp;
 	}
 
-	if ((tmp += write_footer_(out)) <= res)
+	if ((tmp = write_footer_(out)) <= 0)
 	{
 		perror("write_header");
 		exit(EXIT_FAILURE);
 	}
+	res += tmp;
 	return res;
 }
