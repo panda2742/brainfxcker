@@ -7,12 +7,11 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 
 int verify_architecture() {
 #if defined(__x86_64__) || defined(_M_X64)
-	printf("Compiled for x86-64 architecture\n");
+	// printf("Compiled for x86-64 architecture\n");
 	return 1;
 #elif defined(__i386__) || defined(_M_IX86)
 	printf("Compiled for x86 (32-bit) - NOT EXPECTED\n");
@@ -32,19 +31,19 @@ int	main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	TokenList	lexed = lex_file(argv[1]);
+	PagedVector	*lexed = lex_file(argv[1]);
 	AST			ast;
-	parse_block(lexed.data, lexed.count, &ast.nodes, &ast.count);
-	IRProg		prog = {0};
-	gen_ir_nodes(&prog, ast.nodes, ast.count);
-	pass_contract(&prog);
+	parse_block((Token *)lexed->pages[0], lexed->count, &ast.nodes, &ast.count);
+	PagedVector	*prog = pv_create(sizeof(IRInstr));
+	gen_ir_nodes(prog, ast.nodes, ast.count);
+	pass_contract(prog);
 
 	Output	out = create_output(argv[1]);
-	write_instructions(out.asm.file, &prog);
+	write_instructions(out.asm.file, prog);
 	fclose(out.asm.file);
-	printf("%s && %s\n", out.asm.cmd, out.object.cmd);
 	int	_ = system(out.asm.cmd);
 	_ = system(out.object.cmd);
+	remove(out.object.path);
 	(void)_;
 	return EXIT_SUCCESS;
 }

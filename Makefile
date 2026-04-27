@@ -13,11 +13,11 @@ SOURCE_DIR		:=	./src/
 override INIT_HEADERS			:=	args errors lexer parser
 override TRANSLATION_HEADERS	:=	codegen ir optimizer output
 override UTILS_HEADERS			:=	paged_vector
-override HEADER_FILES			:=	$(addprefix init/, $(INIT_HEADERS)) $(addprefix translation/, $(TRANSLATION_HEADERS)) $(addprefix utils/, $(UTILS_HEADERS)) brainfxcker debug
+override HEADER_FILES			:=	$(addprefix init/, $(INIT_HEADERS)) $(addprefix translation/, $(TRANSLATION_HEADERS)) $(addprefix utils/, $(UTILS_HEADERS)) brainfxcker
 override INIT_SOURCES			:=	args errors lexer parser
 override TRANSLATION_SOURCES	:=	codegen ir optimizer output
 override UTILS_SOURCES			:=	paged_vector
-override SOURCE_FILES			:=	$(addprefix init/, $(INIT_SOURCES)) $(addprefix translation/, $(TRANSLATION_SOURCES)) $(addprefix utils/, $(UTILS_SOURCES)) debug main
+override SOURCE_FILES			:=	$(addprefix init/, $(INIT_SOURCES)) $(addprefix translation/, $(TRANSLATION_SOURCES)) $(addprefix utils/, $(UTILS_SOURCES)) main
 
 # **************************************************************************** #
 # 3. OTHER COMPILATION VARIABLES                                               #
@@ -36,12 +36,12 @@ override DIRS		:=	$(sort $(dir $(OBJ) $(DEPS)))
 
 TURBO_FLAGS			:=	-O3 -flto -mtune=native -funroll-loops -ffast-math -falign-functions=32
 DEBUG_FLAGS			:=	-g3
-CFLAGS				:=	-Wall -Wextra -Werror --std=c99 -MD $(DEBUG_FLAGS) $(TURBO_FLAGS)
+CFLAGS				:=	-Wall -Wextra -Werror --std=c99 -D_POSIX_C_SOURCE=200809L -MD $(TURBO_FLAGS)
 MAKEFLAGS			:=	--no-print-directory
 RMFLAGS				:=	-rf
 VG					:=	valgrind
 VGFLAGS				:=	--leak-check=full --show-leak-kinds=all --track-origins=yes --show-mismatched-frees=yes --track-fds=yes --trace-children=yes
-override CC			:=	cc
+override CC			:=	gcc
 override RM			:=	rm
 override CLEAR		:=	clear
 CALLGRIND_PRFL		:=	hotrace.profile
@@ -72,6 +72,7 @@ clean:
 
 .PHONY: fclean
 fclean: clean
+	$(RM) $(RMFLAGS) programs/*.s programs/*.o *.out
 	$(RM) $(RMFLAGS) $(NAME)
 
 PHONY: re
@@ -80,17 +81,19 @@ re: fclean
 
 .PHONY: run
 run: all
-	./$(NAME) <programs/main.bf
+	./$(NAME) programs/main.bf
+	./a.out
 
 .PHONY: vg
 vg: all
-	$(VG) $(VGFLAGS) ./$(NAME) <programs/main.bf
+	$(VG) $(VGFLAGS) ./$(NAME) programs/main.bf
+	./a.out
 
 .PHONY: cg
 cg: all
 	$(MAKE)
 	$(RM) $(RMFLAGS) $(CALLGRIND_PRFL)
-	$(VG) $(VGCALL) ./$(NAME) <programs/main.bf
+	$(VG) $(VGCALL) ./$(NAME) programs/main.bf
 	$(KCACHE) $(CALLGRIND_PRFL)
 
 $(DIRS):

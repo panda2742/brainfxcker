@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-size_t	loop_id = 0;
+static size_t	loop_stack[1024];
+static size_t	loop_stack_top = 0;
+static size_t	loop_counter = 0;
 
 static int	write_header_(FILE *out)
 {
@@ -72,25 +74,29 @@ int write_instructions(FILE *out, PagedVector *prog)
 					"  mov rdx, 1\n"
 					"  syscall\n"
 				);
-			break;
-			case IR_LOOP_BEG:
+			break;case IR_LOOP_BEG:
+			{
+				size_t id = loop_counter++;
+				loop_stack[loop_stack_top++] = id;
 				tmp = fprintf(out,
 					".L%zu_beg:\n"
 					"  cmp byte [rbx], 0\n"
 					"  je .L%zu_end\n",
-					loop_id, loop_id
+					id, id
 				);
-				++loop_id;
-			break;
+				break;
+			}
 			case IR_LOOP_END:
-				--loop_id;
+			{
+				size_t id = loop_stack[--loop_stack_top];
 				tmp = fprintf(out,
 					"  cmp byte [rbx], 0\n"
 					"  jne .L%zu_beg\n"
 					".L%zu_end:\n",
-					loop_id, loop_id
+					id, id
 				);
-			break;
+				break;
+			}
 			default: break;
 		}
 		if (tmp <= res)

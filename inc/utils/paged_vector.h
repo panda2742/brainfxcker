@@ -15,4 +15,4 @@ typedef struct {
 
 PagedVector	*pv_create(size_t sib);
 void		*pv_get(PagedVector *vec, size_t i);
-void	*pv_push(PagedVector *vec, void *element);
+void		*pv_push(PagedVector *vec, void *element);

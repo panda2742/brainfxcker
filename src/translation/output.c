@@ -2,6 +2,7 @@
 #include "translation/output.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -50,7 +51,7 @@ static OutputData	generate_out_data_(OutputDataType type, const char *base_path)
 		break;
 	}
 	data.path_len = base_len + ext_len;
-	data.path = malloc(base_len + 1);
+	data.path = malloc(data.path_len + 1);
 	memcpy(data.path, base_path, base_len);
 	memcpy(&data.path[base_len], ext, ext_len);
 	data.path[data.path_len] = 0;
