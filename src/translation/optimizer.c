@@ -1,14 +1,15 @@
 #include "translation/optimizer.h"
 #include "translation/ir.h"
+#include "utils/paged_vector.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void pass_remove_nop_(IRProg *prog)
+static void pass_remove_nop_(PagedVector *prog)
 {
 	for (size_t i = 0; i < prog->count; ++i)
 	{
-		if (prog->instrs[i].op != IR_NOP) continue;
+		if (((IRInstr *)(pv_get(prog, i)))->op != IR_NOP) continue;
 		memmove(&prog->instrs[i], &prog->instrs[i + 1], prog->count - i);
 	}
 }

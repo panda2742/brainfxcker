@@ -12,10 +12,12 @@ SOURCE_DIR		:=	./src/
 
 override INIT_HEADERS			:=	args errors lexer parser
 override TRANSLATION_HEADERS	:=	codegen ir optimizer output
-override HEADER_FILES			:=	$(addprefix init/, $(INIT_HEADERS)) $(addprefix translation/, $(TRANSLATION_HEADERS)) brainfxcker debug
+override UTILS_HEADERS			:=	paged_vector
+override HEADER_FILES			:=	$(addprefix init/, $(INIT_HEADERS)) $(addprefix translation/, $(TRANSLATION_HEADERS)) $(addprefix utils/, $(UTILS_HEADERS)) brainfxcker debug
 override INIT_SOURCES			:=	args errors lexer parser
 override TRANSLATION_SOURCES	:=	codegen ir optimizer output
-override SOURCE_FILES			:=	$(addprefix init/, $(INIT_SOURCES)) $(addprefix translation/, $(TRANSLATION_SOURCES)) debug main
+override UTILS_SOURCES			:=	paged_vector
+override SOURCE_FILES			:=	$(addprefix init/, $(INIT_SOURCES)) $(addprefix translation/, $(TRANSLATION_SOURCES)) $(addprefix utils/, $(UTILS_SOURCES)) debug main
 
 # **************************************************************************** #
 # 3. OTHER COMPILATION VARIABLES                                               #

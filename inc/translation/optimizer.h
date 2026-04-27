@@ -1,5 +1,5 @@
 #pragma once
 
-#include "ir.h"
+#include "utils/paged_vector.h"
 
-void	pass_contract(IRProg *prog);
+void	pass_contract(PagedVector *prog);

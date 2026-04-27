@@ -1,5 +1,6 @@
 #include "translation/codegen.h"
 #include "translation/ir.h"
+#include "utils/paged_vector.h"
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
@@ -30,7 +31,7 @@ static int	write_footer_(FILE *out)
 	);
 }
 
-int write_instructions(FILE *out, IRProg *prog)
+int write_instructions(FILE *out, PagedVector *prog)
 {
 	int res = 0, tmp = 0;
 
@@ -42,17 +43,17 @@ int write_instructions(FILE *out, IRProg *prog)
 
 	for (size_t i = 0; i < prog->count; ++i)
 	{
-		IRInstr instr = prog->instrs[i];
-		switch (instr.op)
+		IRInstr *instr = pv_get(prog, i);
+		switch (instr->op)
 		{
 			case IR_ADD:
-				tmp = fprintf(out, "  add byte [rbx], %d\n", instr.arg);
+				tmp = fprintf(out, "  add byte [rbx], %d\n", instr->arg);
 			break;
 			case IR_MOVE:
-				tmp = fprintf(out, "  add rbx, %d\n", instr.arg);
+				tmp = fprintf(out, "  add rbx, %d\n", instr->arg);
 			break;
 			case IR_SET:
-				tmp = fprintf(out, "  mov byte [rbx], %d\n", instr.arg);
+				tmp = fprintf(out, "  mov byte [rbx], %d\n", instr->arg);
 			break;
 			case IR_OUTPUT:
 				tmp = fprintf(out,

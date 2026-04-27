@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/paged_vector.h"
 #include <stddef.h>
 
 typedef enum {
@@ -19,11 +20,5 @@ typedef struct {
 	size_t		col;
 }	Token;
 
-typedef struct {
-	Token	*data;
-	size_t	count;
-	size_t	capacity;
-}	TokenList;
-
-TokenList	lex_file(const char *path);
-void		free_token_list(TokenList *tl);
+PagedVector	*lex_file(const char *path);
+void		free_token_list(PagedVector *tl);

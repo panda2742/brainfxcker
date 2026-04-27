@@ -21,10 +21,4 @@ typedef struct {
 	int		offset;	 // pour IR_MUL_COPY
 }	IRInstr;
 
-typedef struct {
-	IRInstr *instrs;
-	size_t	count, capacity;
-}	IRProg;
-
-void emit(IRProg *prog, IRInstr instr);
-void gen_ir_nodes(IRProg *prog, Node *nodes, size_t n);
+void gen_ir_nodes(PagedVector *prog, Node *nodes, size_t n);

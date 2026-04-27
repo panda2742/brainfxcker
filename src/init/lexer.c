@@ -1,19 +1,10 @@
 #include "init/lexer.h"
+#include "utils/paged_vector.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-static void tl_push_(TokenList *tl, Token t)
-{
-	if (tl->count >= tl->capacity)
-	{
-		tl->capacity = tl->capacity ? tl->capacity * 2 : 256;
-		tl->data = realloc(tl->data, tl->capacity * sizeof(Token));
-	}
-	tl->data[tl->count++] = t;
-}
-
-TokenList	lex_file(const char *path)
+PagedVector	*lex_file(const char *path)
 {
 	FILE	*f = fopen(path, "r");
 	if (!f)
@@ -22,7 +13,7 @@ TokenList	lex_file(const char *path)
 		exit(EXIT_FAILURE);
 	}
 
-	TokenList	tl = {0};
+	PagedVector	*tl = pv_create(sizeof(Token));
 	size_t		line = 1, col = 0;
 	int			c;
 
@@ -49,7 +40,7 @@ TokenList	lex_file(const char *path)
 			case ']': kind = TOK_LOOP_CLOSE;break;
 			default: continue;
 		}
-		tl_push_(&tl, (Token){kind, line, col});
+		pv_push(tl, &(Token){kind, line, col});
 	}
 	fclose(f);
 	return tl;
