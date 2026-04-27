@@ -37,7 +37,7 @@ static void pass_clean_loop_(PagedVector *prog)
 	pass_remove_nop_(prog);
 }
 
-void	pass_contract(PagedVector *prog)
+PagedVector	*pass_contract(PagedVector *prog)
 {
 	PagedVector	*out = pv_create(prog->sib);
 
@@ -65,8 +65,6 @@ void	pass_contract(PagedVector *prog)
 		}
 	}
 	pass_clean_loop_(out);
-	prog->count = out->count;
-	prog->page_count = out->page_count;
-	prog->pages = out->pages;
-	prog->sib = out->sib;
+	pv_free(prog);
+	return out;
 }

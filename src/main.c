@@ -37,7 +37,7 @@ int	main(int argc, char *argv[]) {
 	parse_block(lexed, 0, lexed->count, &ast.nodes, &ast.count);
 	PagedVector	*prog = pv_create(sizeof(IRInstr));
 	gen_ir_nodes(prog, ast.nodes, ast.count);
-	pass_contract(prog);
+	prog = pass_contract(prog);
 
 	Output	out = create_output(argv[1]);
 	write_instructions(out.asm.file, prog);
