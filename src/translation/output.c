@@ -1,9 +1,8 @@
-#define _POSIX_C_SOURCE 200809L
 #include "translation/output.h"
+#include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <limits.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define OUTPUT_ASM_CMD "nasm -f elf64 "
